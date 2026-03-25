@@ -27,10 +27,10 @@ class InitModels():
         '''
         # create ordered dictionary of all models to be compared in the A/B experiment
         self.models = {
-            'TELEA Inpainting': TELEAInpainting(inpaint_radius=3),
-            'NS Inpainting': NSInpainting(inpaint_radius=3),
+            'TELEA Inpainting': TELEAInpainting(inpaint_radius=5),
+            'NS Inpainting': NSInpainting(inpaint_radius=5),
             'Dictionary Learning': DictionaryLearningModel(patch_size=8, n_components=64, alpha=1.0),
             'NMF': NMFModel(patch_size=8, n_components=32),
-            'CNN Autoencoder': CNNAutoencoder(n_epochs=10, lr=1e-3, batch_size=8),
+            'CNN Autoencoder': CNNAutoencoder(n_epochs=50, lr=1e-3, batch_size=8),
         }
         print(f"Initialised {len(self.models)} models for A/B comparison: {list(self.models.keys())}")
