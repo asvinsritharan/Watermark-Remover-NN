@@ -9,21 +9,21 @@ from src.ab_testing.experiment import RunABTestingExperiment
 
 class PerformWatermarkRemoval():
 
-    def __init__(self, clean_dir, watermarked_dir, output_dir):
+    def __init__(self, clean_images_path, watermarked_images_path, output_path):
         '''
         Run full watermark removal pipeline: prepare data, train and compare models via A/B testing,
         then apply the best selected model for final watermark removal
 
         Args:
-            clean_dir: path to directory containing clean (unwatermarked) images
-            watermarked_dir: path to directory containing watermarked versions of the same images
-            output_dir: path to directory where experiment results and final outputs will be saved
+            clean_images_path: path to directory containing clean (unwatermarked) images
+            watermarked_images_path: path to directory containing watermarked versions of the same images
+            output_path: path to directory where experiment results and final outputs will be saved
 
         Returns:
             None
         '''
         # load matched clean/watermarked image pairs from the two directories
-        self._data_prep = PrepareImageData(clean_dir, watermarked_dir)
+        self._data_prep = PrepareImageData(clean_images_path, watermarked_images_path)
         # initialize all candidate model configurations
         self._model_configs = InitModels()
         # run A/B testing experiment across all models to determine the best performer
@@ -32,7 +32,7 @@ class PerformWatermarkRemoval():
             self._data_prep.watermarked_images,
             self._data_prep.masks,
             self._model_configs.models,
-            output_dir
+            output_path
         )
         # store the best model selected by the experiment
         self.best_model_name = self._experiment.best_model_name
@@ -86,11 +86,11 @@ class PerformWatermarkRemoval():
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Watermark Removal using Machine Learning')
-    parser.add_argument('--clean_dir', type=str, default='data/clean_images',
+    parser.add_argument('--clean_images_path', type=str, default='data/clean_images',
                         help='Directory of clean (unwatermarked) images')
-    parser.add_argument('--watermarked_dir', type=str, default='data/watermarked_images',
+    parser.add_argument('--watermarked_images_path', type=str, default='data/watermarked_images',
                         help='Directory of watermarked images (filenames must match clean_dir)')
-    parser.add_argument('--output_dir', type=str, default='results',
+    parser.add_argument('--output_path', type=str, default='results',
                         help='Output directory for experiment results and plots')
     parser.add_argument('--test_image', type=str, default=None,
                         help='Path to a watermarked image to process with the best model')
@@ -98,9 +98,9 @@ if __name__ == '__main__':
                         help='Path to binary watermark mask for the test image')
     args = parser.parse_args()
 
-    pipeline = PerformWatermarkRemoval(args.clean_dir, args.watermarked_dir, args.output_dir)
+    pipeline = PerformWatermarkRemoval(args.clean_images_path, args.watermarked_images_path, args.output_path)
 
     if args.test_image:
-        output_path = Path(args.output_dir) / 'final_output.png'
+        output_path = Path(args.output_path) / 'final_output.png'
         pipeline.remove_watermark(args.test_image, args.mask, output_path)
-        pipeline.remove_watermark_all_models(args.test_image, args.mask, args.output_dir)
+        pipeline.remove_watermark_all_models(args.test_image, args.mask, args.output_path)

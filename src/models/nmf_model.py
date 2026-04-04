@@ -1,25 +1,24 @@
 import numpy as np
-import cv2
 import joblib
 from sklearn.decomposition import NMF
 
 
 class NMFModel():
 
-    def __init__(self, patch_size=8, n_components=32):
+    def __init__(self, subsection=8, n_components=32):
         '''
         Initialize a patch-based Non-negative Matrix Factorisation (NMF) model for watermark removal.
         Use clean image patches with different colour channels for NMF component learning. Watermarked patches
         are then reconstructed by projecting onto the learned component space.
 
         Args:
-            patch_size: dimension oheight and width of square image patches to extract
+            subsection: dimension oheight and width of square image patches to extract
             n_components: number of NMF components to learn per channel
 
         Returns:
             None
         '''
-        self._patch_size = patch_size
+        self._subsection = subsection
         self._n_components = n_components
         self.name = 'NMF'
         # initialise one NMF model per colour channel
@@ -38,10 +37,10 @@ class NMFModel():
             mask: optional binary numpy array (H x W); patches where mask mean > 50 are skipped
 
         Returns:
-            numpy array of shape (n_patches, patch_size^2) with float32 values in [0, 1]
+            numpy array of shape (n_patches, subsection^2) with float32 values in [0, 1]
         '''
         h, w = image.shape[:2]
-        p = self._patch_size
+        p = self._subsection
         patches = []
         for i in range(0, h - p, p):
             for j in range(0, w - p, p):
@@ -52,7 +51,7 @@ class NMFModel():
                 patch = image[i:i + p, j:j + p, channel].astype(np.float32) / 255.0
                 patches.append(patch.flatten())
         if not patches:
-            return np.empty((0, self._patch_size * self._patch_size), dtype=np.float32)
+            return np.empty((0, self._subsection * self._subsection), dtype=np.float32)
         return np.array(patches)
 
     def fit(self, clean_images, watermarked_images, masks):
@@ -88,7 +87,7 @@ class NMFModel():
 
     def remove_watermark(self, image, mask):
         '''
-        Reconstruct watermarked patches channel-by-channel using the learned NMF components
+        Reconstruct watermarked sections channel-by-channel using the learned NMF components
 
         Args:
             image: numpy array of watermarked image (H x W x 3, BGR)
@@ -97,27 +96,28 @@ class NMFModel():
         Returns:
             numpy array of the restored image (H x W x 3, BGR)
         '''
-        h, w = image.shape[:2]
-        p = self._patch_size
+
+        height, width = image.shape[:2]
+        subsection = self._subsection
         restored = image.copy().astype(np.float32) / 255.0
-        for i in range(0, h - p, p):
-            for j in range(0, w - p, p):
-                patch_mask = mask[i:i + p, j:j + p]
+        for i in range(0, height - subsection, subsection):
+            for j in range(0, width - subsection, subsection):
+                patch_mask = mask[i:i + subsection, j:j + subsection]
                 # only reconstruct patches that overlap with the watermark
                 if patch_mask.mean() > 30:
                     for c in range(3):
-                        patch = image[i:i + p, j:j + p, c].astype(np.float32) / 255.0
+                        patch = image[i:i + subsection, j:j + subsection, c].astype(np.float32) / 255.0
                         patch_flat = patch.flatten().reshape(1, -1)
                         # project to NMF space and reconstruct
                         H = self._nmf_models[c].transform(patch_flat)
                         reconstructed = (H @ self._components[c]).flatten()
                         reconstructed = np.clip(reconstructed, 0, 1)
-                        restored[i:i + p, j:j + p, c] = reconstructed.reshape(p, p)
+                        restored[i:i + subsection, j:j + subsection, c] = reconstructed.reshape(subsection, subsection)
         return (restored * 255).astype(np.uint8)
 
     def save(self, path):
         '''
-        Save the trained NMF models and components to disk using joblib
+        Save the trained NMF models and components to path using joblib
 
         Args:
             path: file path to save the model to (e.g. results/saved_models/nmf.pkl)
@@ -126,22 +126,22 @@ class NMFModel():
             None
         '''
         joblib.dump({'nmf_models': self._nmf_models, 'components': self._components,
-                     'patch_size': self._patch_size, 'n_components': self._n_components}, path)
+                     'subsection': self._subsection, 'n_components': self._n_components}, path)
         print(f"Saved {self.name} to {path}")
 
     @classmethod
     def load(cls, path):
         '''
-        Load a trained NMF model from disk
+        Load a trained NMF model from path
 
         Args:
             path: file path to load the model from
 
         Returns:
-            NMFModel instance with restored state
+            fitted NMF model
         '''
         data = joblib.load(path)
-        instance = cls(patch_size=data['patch_size'], n_components=data['n_components'])
+        instance = cls(subsection=data['subsection'], n_components=data['n_components'])
         instance._nmf_models = data['nmf_models']
         instance._components = data['components']
         return instance

@@ -69,6 +69,8 @@ class RunABTestingExperiment():
         print("\n--- Training all models ---")
         for name, model in self._models.items():
             print(f"\nTraining: {name}")
+            if name in ['TELEA Inpainting', 'NS Inpainting']:
+                continue
             model.fit(self._train_clean, self._train_watermarked, self._train_masks)
 
     def _save_all_models(self):

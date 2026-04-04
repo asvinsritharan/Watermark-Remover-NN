@@ -1,5 +1,4 @@
 import numpy as np
-import cv2
 import joblib
 from sklearn.decomposition import DictionaryLearning
 from sklearn.linear_model import OrthogonalMatchingPursuit
@@ -47,16 +46,16 @@ class DictionaryLearningModel():
         Returns:
             numpy array of shape (n_patches, patch_size^2 * 3) with float32 values in [0, 1]
         '''
-        h, w = image.shape[:2]
-        p = self._patch_size
+        height, width = image.shape[:2]
+        patch_size = self._patch_size
         patches = []
-        for i in range(0, h - p, p):
-            for j in range(0, w - p, p):
-                # skip patches that fall inside the watermark region
+        for x in range(0, height - patch_size, patch_size):
+            for y in range(0, width - patch_size, patch_size):
+                # skip patches that contain watermark
                 if mask is not None:
-                    if mask[i:i + p, j:j + p].mean() > 50:
+                    if mask[x:x + patch_size, y:y + patch_size].mean() > 50:
                         continue
-                patch = image[i:i + p, j:j + p].astype(np.float32) / 255.0
+                patch = image[x:x + patch_size, y:y + patch_size].astype(np.float32) / 255.0
                 patches.append(patch.flatten())
         if not patches:
             return np.empty((0, self._patch_size * self._patch_size * 3), dtype=np.float32)
@@ -94,11 +93,11 @@ class DictionaryLearningModel():
 
     def remove_watermark(self, image, mask):
         '''
-        Reconstruct watermarked patches using sparse coding over the learned dictionary
+        Remove watermark and reconstruct watermark subgrid using learned dictionary
 
         Args:
-            image: numpy array of watermarked image (H x W x 3, BGR)
-            mask: numpy array of binary watermark mask (H x W), 255 = watermark region
+            image: a numpy array which represents the watermarked image (H x W x 3, BGR)
+            mask: a numpy array which represents the watermark mask (H x W)
 
         Returns:
             numpy array of the restored image (H x W x 3, BGR)
